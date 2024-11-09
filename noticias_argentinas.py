@@ -123,7 +123,7 @@ listado_noticias, tiempo_no_concurrente = medir_tiempo(
     ejecutar_no_concurrente, links_noticias
 )
 
-# Ejecutación de la función concurrente con medición de tiempo
+# Ejecución de la función concurrente con medición de tiempo
 listado_noticias_concurrente, tiempo_concurrente = medir_tiempo(
     ejecutar_concurrente, links_noticias
 )
