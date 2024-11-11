@@ -12,7 +12,7 @@ headers = {
 }
 
 
-# Esta función extrae de cada página los enlaces a cada noticia
+# Función que extrae de cada página del sitio los enlaces de cada una de las noticias
 def extraer_links(nro_paginas: int) -> list:
     links = []
 
@@ -68,43 +68,24 @@ def extraer_info(link: str) -> dict:
 
 
 # Esta función mide el tiempo de ejecución de una función
-def medir_tiempo(func, *args):
-    tiempo_inicio = time.time()
-    resultado = func(*args)
-    tiempo_final = time.time()
-    return resultado, tiempo_final - tiempo_inicio
+def medir_tiempo(func):
+    def wrapper(*args, **kwargs):
+        tiempo_inicio = time.time()
+        resultado = func(*args, **kwargs)
+        tiempo_final = time.time()
+        print(
+            f"Tiempo de ejecución de {func.__name__}: {tiempo_final - tiempo_inicio:.2f} segundos"
+        )
+        return resultado
 
-
-# Función para comparar el tiempo dependiendo los hilos que se usen
-def medir_tiempo_hilos(num_hilos):
-    links_noticias = extraer_links(1)
-    tiempo_inicio = time.time()
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_hilos) as executor:
-        detalle_noticia = executor.map(extraer_info, links_noticias)
-        listado_noticias = [noticia for noticia in detalle_noticia if noticia]
-
-    tiempo_final = time.time()
-    return tiempo_final - tiempo_inicio
-
-
-# Ejecución concurrente con diferentes números de hilos
-def ejecutar_concurrente_hilos():
-    resultados_tiempos = {}
-    for hilos in [1, 2, 4, 8]:
-        tiempo = medir_tiempo_hilos(hilos)
-        resultados_tiempos[hilos] = tiempo
-        print(f"Tiempo con {hilos} hilo(s): {tiempo:.2f} segundos")
-
-
-# Enlaces de las noticias
-links_noticias = extraer_links(1)
+    return wrapper
 
 
 # Ejecución no concurrente
-def ejecutar_no_concurrente(links_noticias):
+@medir_tiempo
+def ejecutar_no_concurrente(links: list):
     todas_noticias = []
-    for link in links_noticias:
+    for link in links:
         info_noticia = extraer_info(link)
         if info_noticia:
             todas_noticias.append(info_noticia)
@@ -112,31 +93,35 @@ def ejecutar_no_concurrente(links_noticias):
 
 
 # Ejecución concurrente
-def ejecutar_concurrente(links_noticias):
+@medir_tiempo
+def ejecutar_concurrente(links: list):
     with concurrent.futures.ThreadPoolExecutor() as ex:
-        detalle_noticia = ex.map(extraer_info, links_noticias)
+        detalle_noticia = ex.map(extraer_info, links)
         return [noticia for noticia in detalle_noticia if noticia]
 
 
-# Ejecución de la función no concurrente con medición de tiempo
-listado_noticias, tiempo_no_concurrente = medir_tiempo(
-    ejecutar_no_concurrente, links_noticias
-)
+# Ejecución concurrente con diferentes números de hilos
+@medir_tiempo
+def ejecutar_concurrente_con_hilos(num_hilos: int, links: list):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_hilos) as executor:
+        detalle_noticia = executor.map(extraer_info, links)
+        listado_noticias = [noticia for noticia in detalle_noticia if noticia]
+    return listado_noticias
 
-# Ejecución de la función concurrente con medición de tiempo
-listado_noticias_concurrente, tiempo_concurrente = medir_tiempo(
-    ejecutar_concurrente, links_noticias
-)
 
-# Comparación resultados
-print(
-    f"El tiempo de ejecución no concurrente es de: {tiempo_no_concurrente:.2f} segundos para {len(listado_noticias)} noticias"
-)
-print(
-    f"El tiempo de ejecución concurrente es de: {tiempo_concurrente:.2f} segundos para {len(listado_noticias_concurrente)} noticias"
-)
+# Listado de noticias
+links_noticias = extraer_links(1)
 
+# Comparación entre concurrente y no concurrente
+ejecucion_no_concurrente = ejecutar_no_concurrente(links_noticias)
+ejecucion_concurrente = ejecutar_concurrente(links_noticias)
+
+# Ejecuta con diferentes cantidades de hilos
+for hilos in [1, 2, 4, 8]:
+    print(f"Ejecución con {hilos} hilo(s)")
+    ejecutar_concurrente_con_hilos(hilos, links_noticias)
 
 # Guardamos la información que recolectamos a un archivo csv
-df = pd.DataFrame(listado_noticias_concurrente)
+df = pd.DataFrame(ejecucion_concurrente)
 df.to_csv("recopilacion_noticias.csv", index=False)
+
